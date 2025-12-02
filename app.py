@@ -1,45 +1,28 @@
-import streamlit as st
-import extract_msg
-import re
-import pandas as pd
 
-st.title("Email Header Extractor (.msg)")
+import json
+import base64
+from flask import Flask, request, jsonify
 
-uploaded_files = st.file_uploader("Lade mehrere .msg-Dateien hoch", type=["msg"], accept_multiple_files=True)
+app = Flask(__name__)
 
-def extract_header_info(msg_file):
-    msg = extract_msg.Message(msg_file)
-    headers = msg.header if msg.header else ""
-    if isinstance(headers, dict):
-        headers = "
-".join(f"{k}: {v}" for k, v in headers.items())
-    # DKIM Domain
-    dkim_domain = re.search(r"d=(\S+)", headers)
-    dkim_domain = dkim_domain.group(1) if dkim_domain else "Not found"
-    # DKIM Selector
-    dkim_selector = re.search(r"s=(\S+)", headers)
-    dkim_selector = dkim_selector.group(1) if dkim_selector else "Not found"
-    # From Domain
-    from_domain = re.search(r"From:.*@(\S+)", headers)
-    from_domain = from_domain.group(1) if from_domain else "Not found"
-    # Return-Path Domain
-    return_path = re.search(r"Return-Path:.*@(\S+)", headers)
-    return_path = return_path.group(1) if return_path else "Not found"
-    return {
-        "File": msg_file.name,
-        "DKIM Domain": dkim_domain,
-        "From Domain": from_domain,
-        "DKIM Selector": dkim_selector,
-        "Return-Path Domain": return_path
-    }
+def decode_email(encoded_email):
+    try:
+        # Base64-Decodierung
+        decoded_bytes = base64.b64decode(encoded_email)
+        decoded_str = decoded_bytes.decode("utf-8")
+        return decoded_str
+    except Exception as e:
+        return f"Fehler beim Dekodieren: {str(e)}"
 
-if uploaded_files:
-    data = []
-    for file in uploaded_files:
-        data.append(extract_header_info(file))
-    df = pd.DataFrame(data)
-    st.write("### Extrahierte Header-Informationen")
-    st.dataframe(df)
-    # Optional: Download als CSV
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("Download CSV", csv, "header_info.csv", "text/csv")
+@app.route("/decode", methods=["POST"])
+def decode():
+    data = request.get_json()
+    if not data or "email" not in data:
+        return jsonify({"error": "Bitte 'email' im JSON-Body angeben"}), 400
+
+    encoded_email = data["email"]
+    decoded_email = decode_email(encoded_email)
+    return jsonify({"decoded_email": decoded_email})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
