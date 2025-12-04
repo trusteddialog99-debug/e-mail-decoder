@@ -8,7 +8,7 @@ import olefile
 
 st.set_page_config(page_title="MSG/EML Header Analyzer (robust)", layout="wide")
 
-st.title("MSG / EML Header Analyzer – robustes MSG-Parsing")
+st.title("MSG / EML Header Decoder")
 st.markdown("""
 Extrahiert aus den Internet-Headern (MSG/EML):
 - DKIM Domain (d=)
